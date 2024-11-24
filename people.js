@@ -1,14 +1,18 @@
 
+// Configure the base URL for API calls
+const API_BASE_URL = 'https://elshreef.netlify.app/api'; // Replace 'your-app-name' with your actual Heroku app name
+
 // Function to fetch data from the backend
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`https://elshreef.netlify.app/api/${endpoint}`);
+        const response = await fetch(`${API_BASE_URL}/${endpoint}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return await response.json();
     } catch (error) {
         console.error(`Could not fetch ${endpoint}:`, error);
+        throw error;
     }
 }
 
@@ -19,7 +23,7 @@ async function addPerson(event) {
     const jobTitle = document.getElementById('jobTitle').value;
 
     try {
-        const response = await fetch('https://elshreef.netlify.app/api/people', {
+        const response = await fetch(`${API_BASE_URL}/people`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -43,7 +47,7 @@ async function addPerson(event) {
 // Function to delete a person
 async function deletePerson(id) {
     try {
-        const response = await fetch(`https://elshreef.netlify.app/api/people/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/people/${id}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
