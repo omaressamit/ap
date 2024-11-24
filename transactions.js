@@ -1,14 +1,18 @@
 
+// Configure the base URL for API calls
+const API_BASE_URL = 'https://elshreef.netlify.app/api';
+
 // Function to fetch data from the backend
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`https://elshreef.netlify.app/api/${endpoint}`);
+        const response = await fetch(`${API_BASE_URL}/${endpoint}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return await response.json();
     } catch (error) {
         console.error(`Could not fetch ${endpoint}:`, error);
+        throw error;
     }
 }
 
@@ -21,7 +25,7 @@ async function addTransaction(event) {
     const description = document.getElementById('description').value;
 
     try {
-        const response = await fetch('https://elshreef.netlify.app/api/transactions', {
+        const response = await fetch(`${API_BASE_URL}/transactions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
