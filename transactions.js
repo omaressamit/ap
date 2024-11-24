@@ -2,7 +2,7 @@
 // Function to fetch data from the backend
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`http://localhost:5000/api/${endpoint}`);
+        const response = await fetch(`https://elshreef.netlify.app/api/${endpoint}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -21,7 +21,7 @@ async function addTransaction(event) {
     const description = document.getElementById('description').value;
 
     try {
-        const response = await fetch('http://localhost:5000/api/transactions', {
+        const response = await fetch('https://elshreef.netlify.app/api/transactions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
