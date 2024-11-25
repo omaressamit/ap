@@ -1,18 +1,13 @@
-
-// Configure the base URL for API calls
-const API_BASE_URL = 'https://elshreef.netlify.app/api'; // Replace 'your-app-name' with your actual Heroku app name
-
 // Function to fetch data from the backend
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`${API_BASE_URL}/${endpoint}`);
+        const response = await fetch(`/api/${endpoint}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return await response.json();
     } catch (error) {
         console.error(`Could not fetch ${endpoint}:`, error);
-        throw error;
     }
 }
 
@@ -23,7 +18,7 @@ async function addPerson(event) {
     const jobTitle = document.getElementById('jobTitle').value;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/people`, {
+        const response = await fetch('/api/people', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -47,48 +42,61 @@ async function addPerson(event) {
 // Function to delete a person
 async function deletePerson(id) {
     try {
-        const response = await fetch(`${API_BASE_URL}/people/${id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'delete' }),
+        const response = await fetch(`/api/people/${id}`, {
+            method: 'DELETE',
         });
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         console.log('Person deleted:', id);
         loadPeople();
     } catch (error) {
         console.error('Error deleting person:', error);
-        alert(`Failed to delete person. Error: ${error.message}`);
     }
 }
 
-// Function to load people
+// Function to load and display all people
 async function loadPeople() {
-    const peopleTable = document.getElementById('peopleTable').getElementsByTagName('tbody')[0];
-    peopleTable.innerHTML = '';
+    try {
+        const people = await fetchData('people');
+        displayPeople(people);
+    } catch (error) {
+        console.error('Error loading people:', error);
+    }
+}
 
-    const people = await fetchData('people');
+// Function to display people
+function displayPeople(people) {
+    const peopleList = document.getElementById('peopleList');
+    if (!peopleList) {
+        console.error('Element with id "peopleList" not found');
+        return;
+    }
+    peopleList.innerHTML = '';
 
     people.forEach(person => {
-        const row = peopleTable.insertRow();
-        row.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-light">${person.name}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-light">${person.jobTitle}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-light">
-                <button onclick="deletePerson('${person._id}')" class="text-red-500 hover:text-red-700">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
+        const li = document.createElement('li');
+        li.className = 'mb-2';
+        li.innerHTML = `
+            <span>${person.name} - ${person.jobTitle}</span>
+            <button onclick="deletePerson('${person._id}')" class="ml-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded">حذف</button>
         `;
+        peopleList.appendChild(li);
     });
 }
 
-// Event listeners
-document.getElementById('addPersonForm').addEventListener('submit', addPerson);
-document.addEventListener('DOMContentLoaded', loadPeople);
+// Initialize the page
+function initializePage() {
+    const addPersonForm = document.getElementById('addPersonForm');
+    if (addPersonForm) {
+        addPersonForm.addEventListener('submit', addPerson);
+    } else {
+        console.error('Element with id "addPersonForm" not found');
+    }
+    loadPeople();
+}
+
+// Load people when the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initializePage);
