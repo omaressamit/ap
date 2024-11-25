@@ -1,9 +1,7 @@
-
 // Function to fetch data from the backend
 async function fetchData(endpoint, params = {}) {
-    const url = new URL(`http://localhost:5000/api/${endpoint}`);
+    const url = new URL(`/api/${endpoint}`, window.location.origin);
     Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-    
     try {
         const response = await fetch(url);
         if (!response.ok) {
@@ -16,34 +14,13 @@ async function fetchData(endpoint, params = {}) {
     }
 }
 
-// Function to load and display all transactions
-async function loadTransactions(searchPerson = '') {
+// Function to load transactions
+async function loadTransactions() {
     try {
-        const transactions = await fetchData('transactions', searchPerson ? { person: searchPerson } : {});
+        const transactions = await fetchData('transactions');
         displayTransactions(transactions);
     } catch (error) {
         console.error('Error loading transactions:', error);
-        alert('Failed to load transactions. Please try again.');
-    }
-}
-
-// Function to delete a transaction
-async function deleteTransaction(id) {
-    try {
-        const response = await fetch(`http://localhost:5000/api/transactions/${id}`, {
-            method: 'DELETE',
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-
-        console.log('Transaction deleted:', id);
-        loadTransactions();
-    } catch (error) {
-        console.error('Error deleting transaction:', error);
-        alert(`Failed to delete transaction. Error: ${error.message}`);
     }
 }
 
@@ -52,82 +29,54 @@ function displayTransactions(transactions) {
     const tablesContainer = document.getElementById('treasuryTables');
     tablesContainer.innerHTML = '';
 
-    if (transactions.length === 0) {
-        tablesContainer.innerHTML = '<p class="text-light">No transactions found.</p>';
-        return;
-    }
+    const personTransactions = {};
 
-    // Group transactions by person
-    const transactionsByPerson = transactions.reduce((acc, transaction) => {
-        if (!acc[transaction.person._id]) {
-            acc[transaction.person._id] = [];
+    transactions.forEach(transaction => {
+        const personName = transaction.person ? transaction.person.name : 'غير محدد';
+        if (!personTransactions[personName]) {
+            personTransactions[personName] = [];
         }
-        acc[transaction.person._id].push(transaction);
-        return acc;
-    }, {});
+        personTransactions[personName].push(transaction);
+    });
 
-    // Create a table for each person
-    for (const personId in transactionsByPerson) {
-        const personTransactions = transactionsByPerson[personId];
-        const personName = personTransactions[0].person.name;
-
-        const tableHTML = `
-            <div class="bg-gray-800 p-4 rounded shadow">
-                <h3 class="text-xl font-semibold text-light mb-4">${personName}</h3>
-                <table class="min-w-full divide-y divide-gray-700">
-                    <thead class="bg-gray-700">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-light uppercase tracking-wider">التاريخ</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-light uppercase tracking-wider">النوع</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-light uppercase tracking-wider">المبلغ</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-light uppercase tracking-wider">الوصف</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-light uppercase tracking-wider">حذف</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-gray-800 divide-y divide-gray-700">
-                        ${personTransactions.map(transaction => `
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-light">${new Date(transaction.date).toLocaleDateString('ar-EG')}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm ${
-                                        transaction.type === 'revenue' ? 'text-green-500' : 
-                                        transaction.type === 'expense' ? 'text-red-500' : 'text-yellow-500'
-                                    }">
-                                        ${
-                                            transaction.type === 'revenue' ? 'ايراد' : 
-                                            transaction.type === 'expense' ? 'مصروف' : 'ايراد علي سبيل الأمانة'
-                                        }
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-light">${transaction.amount}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-light">${transaction.description}</div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <button onclick="deleteTransaction('${transaction._id}')" class="text-red-500 hover:text-red-700">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
+    for (const [personName, personTrans] of Object.entries(personTransactions)) {
+        const table = document.createElement('table');
+        table.className = 'w-full mb-8 bg-gray-800';
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th colspan="4" class="py-2 px-4 bg-gray-700 text-left">${personName}</th>
+                </tr>
+                <tr>
+                    <th class="py-2 px-4 text-left">التاريخ</th>
+                    <th class="py-2 px-4 text-left">النوع</th>
+                    <th class="py-2 px-4 text-left">المبلغ</th>
+                    <th class="py-2 px-4 text-left">الوصف</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${personTrans.map(transaction => `
+                    <tr>
+                        <td class="py-2 px-4">${formatDate(transaction.date)}</td>
+                        <td class="py-2 px-4">${transaction.type === 'income' ? 'دخل' : 'مصروف'}</td>
+                        <td class="py-2 px-4">${transaction.amount} جنيه</td>
+                        <td class="py-2 px-4">${transaction.description}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
         `;
-        tablesContainer.innerHTML += tableHTML;
+        tablesContainer.appendChild(table);
     }
 }
 
-// Event listener for search form
-document.getElementById('searchForm').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const searchPerson = document.getElementById('searchPerson').value;
-    await loadTransactions(searchPerson);
-});
+// Function to format date to Gregorian (DD/MM/YYYY)
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+}
 
-// Load all transactions when the page loads
-document.addEventListener('DOMContentLoaded', () => loadTransactions());
+// Load transactions when the page loads
+document.addEventListener('DOMContentLoaded', loadTransactions);
