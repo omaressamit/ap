@@ -1,14 +1,15 @@
-
 // Function to fetch data from the backend
 async function fetchData(endpoint) {
+    const url = new URL(`/api/${endpoint}`, window.location.origin);
     try {
-        const response = await fetch(`http://localhost:5000/api/${endpoint}`);
+        const response = await fetch(url);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return await response.json();
     } catch (error) {
         console.error(`Could not fetch ${endpoint}:`, error);
+        return null;
     }
 }
 
@@ -16,8 +17,10 @@ async function fetchData(endpoint) {
 async function loadSettings() {
     const settings = await fetchData('settings');
     if (settings) {
-        document.getElementById('initialBalance').value = settings.initialBalance;
-        document.getElementById('companyName').value = settings.companyName;
+        document.getElementById('initialBalance').value = settings.initialBalance || 0;
+        document.getElementById('companyName').value = settings.companyName || '';
+    } else {
+        console.error('Failed to load settings');
     }
 }
 
@@ -28,8 +31,8 @@ async function saveSettings(event) {
     const companyName = document.getElementById('companyName').value;
 
     try {
-        const response = await fetch('http://localhost:5000/api/settings', {
-            method: 'PUT',
+        const response = await fetch('/api/settings', {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -52,98 +55,89 @@ async function saveSettings(event) {
 // Function to backup data
 async function backupData() {
     try {
-        const response = await fetch('http://localhost:5000/api/backup', {
-            method: 'GET',
-        });
-
+        const response = await fetch('/api/backup', { method: 'POST' });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'treasury_backup.json';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
+        const result = await response.json();
+        console.log('Backup created:', result);
         alert('تم إنشاء نسخة احتياطية بنجاح');
     } catch (error) {
-        console.error('Error backing up data:', error);
+        console.error('Error creating backup:', error);
         alert('حدث خطأ أثناء إنشاء النسخة الاحتياطية');
     }
 }
 
 // Function to restore data
 async function restoreData() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (event) => {
-        const file = event.target.files[0];
-        const formData = new FormData();
-        formData.append('backup', file);
-
+    if (confirm('هل أنت متأكد من استعادة البيانات؟ سيتم استبدال جميع البيانات الحالية.')) {
         try {
-            const response = await fetch('http://localhost:5000/api/restore', {
-                method: 'POST',
-                body: formData,
-            });
-
+            const response = await fetch('/api/restore', { method: 'POST' });
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-
             const result = await response.json();
             console.log('Data restored:', result);
             alert('تم استعادة البيانات بنجاح');
-            loadSettings();
+            location.reload(); // Reload the page to reflect restored data
         } catch (error) {
             console.error('Error restoring data:', error);
             alert('حدث خطأ أثناء استعادة البيانات');
         }
-    };
-    input.click();
+    }
 }
 
 // Function to reset balances
 async function resetBalances() {
-    if (confirm('هل أنت متأكد من أنك تريد تصفير جميع الأرصدة؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+    if (confirm('هل أنت متأكد من تصفير جميع الأرصدة؟ لا يمكن التراجع عن هذا الإجراء.')) {
         try {
-            const response = await fetch('http://localhost:5000/api/settings/reset-balances', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
+            const response = await fetch('/api/reset-balances', { method: 'POST' });
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
             const result = await response.json();
             console.log('Balances reset:', result);
             alert('تم تصفير الأرصدة بنجاح');
-            // Reload the settings and update the UI
-            await loadSettings();
-            // You might want to update other parts of the UI that display balance information
-            // For example, you could call a function to update the dashboard:
-            // await updateDashboard();
+            loadSettings(); // Reload settings to reflect the changes
         } catch (error) {
             console.error('Error resetting balances:', error);
-            alert(`حدث خطأ أثناء تصفير الأرصدة: ${error.message}`);
+            alert('حدث خطأ أثناء تصفير الأرصدة');
         }
     }
 }
 
-// Event listeners
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize the page
+function initializePage() {
     loadSettings();
-    document.getElementById('settingsForm').addEventListener('submit', saveSettings);
-    document.getElementById('backupData').addEventListener('click', backupData);
-    document.getElementById('restoreData').addEventListener('click', restoreData);
-    document.getElementById('resetBalances').addEventListener('click', resetBalances);
-});
+    const settingsForm = document.getElementById('settingsForm');
+    const backupButton = document.getElementById('backupData');
+    const restoreButton = document.getElementById('restoreData');
+    const resetBalancesButton = document.getElementById('resetBalances');
+    
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', saveSettings);
+    } else {
+        console.error('Settings form not found');
+    }
+    
+    if (backupButton) {
+        backupButton.addEventListener('click', backupData);
+    } else {
+        console.error('Backup button not found');
+    }
+    
+    if (restoreButton) {
+        restoreButton.addEventListener('click', restoreData);
+    } else {
+        console.error('Restore button not found');
+    }
+    
+    if (resetBalancesButton) {
+        resetBalancesButton.addEventListener('click', resetBalances);
+    } else {
+        console.error('Reset balances button not found');
+    }
+}
+
+// Load settings when the page loads
+document.addEventListener('DOMContentLoaded', initializePage);
