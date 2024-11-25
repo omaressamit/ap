@@ -2,7 +2,7 @@
 // Function to fetch data from the backend
 async function fetchData(endpoint) {
     try {
-        const response = await fetch(`spontaneous-rugelach-1f7dea.netlify.app/api/${endpoint}`);
+        const response = await fetch(`/api/${endpoint}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
